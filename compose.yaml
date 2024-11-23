@@ -3,6 +3,8 @@ services:
   # LibreChat
   api:
     image: ghcr.io/danny-avila/librechat-dev:latest
+    ports:
+      - "3080:3080"
     environment:
       - APP_TITLE=LibreChat
       - HOST=0.0.0.0

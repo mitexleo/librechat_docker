@@ -1,0 +1,157 @@
+version: "3.8"
+services:
+  # LibreChat
+  api:
+    image: ghcr.io/danny-avila/librechat-dev:latest
+    environment:
+      - APP_TITLE=LibreChat
+      - HOST=0.0.0.0
+      - PORT=3080
+      - MONGO_URI=mongodb://mongodb:27017/LibreChat
+      - DOMAIN_CLIENT=https://chat.sysplore.com
+      - DOMAIN_SERVER=https://chat.sysplore.com
+      - NO_INDEX=true
+      - DEBUG_LOGGING=true
+      - DEBUG_CONSOLE=false
+      - PROXY=
+      - ENDPOINTS=openAI,chatGPTBrowser,gptPlugins,assistants,anthropic,bingAI,google,customgpt
+      - CONFIG_PATH=https://raw.githubusercontent.com/fuegovic/lc-config-yaml/main/librechat.yaml
+      - ANYSCALE_API_KEY=user_provided
+      - APIPIE_API_KEY=user_provided
+      - COHERE_API_KEY=user_provided
+      - FIREWORKS_API_KEY=user_provided
+      - GROQ_API_KEY=user_provided
+      - HUGGINGFACE_TOKEN=user_provided
+      - MISTRAL_API_KEY=user_provided
+      - OPENROUTER_KEY=user_provided
+      - PERPLEXITY_API_KEY=user_provided
+      - SHUTTLEAI_API_KEY=user_provided
+      - TOGETHERAI_API_KEY=user_provided
+      - ANTHROPIC_API_KEY=user_provided
+      - BINGAI_TOKEN=user_provided
+      - GOOGLE_KEY=user_provided
+      - OPENAI_API_KEY=user_provided
+      - ASSISTANTS_API_KEY=user_provided
+      - DEBUG_OPENAI=false
+      - DEBUG_PLUGINS=true
+      - CREDS_KEY=29206a7a687cb80b24fa9b9de2babab9e6ab1ba12cc8c5c4aabfcff2938cfc16
+      - CREDS_IV=9a14c03db640847e4b4f76e5ee7f177a
+      - SEARCH=true
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_MASTER_KEY=DrhYf7zENyR6AlUCKmnz0eYASOQdl6zxH7s7MKFSfFCt
+      - OPENAI_MODERATION=false
+      - OPENAI_MODERATION_API_KEY=
+      - BAN_VIOLATIONS=true
+      - BAN_DURATION=7200000
+      - BAN_INTERVAL=20
+      - LOGIN_VIOLATION_SCORE=1
+      - REGISTRATION_VIOLATION_SCORE=1
+      - CONCURRENT_VIOLATION_SCORE=1
+      - MESSAGE_VIOLATION_SCORE=1
+      - NON_BROWSER_VIOLATION_SCORE=20
+      - LOGIN_MAX=7
+      - LOGIN_WINDOW=5
+      - REGISTER_MAX=5
+      - REGISTER_WINDOW=60
+      - LIMIT_CONCURRENT_MESSAGES=true
+      - CONCURRENT_MESSAGE_MAX=2
+      - LIMIT_MESSAGE_IP=true
+      - MESSAGE_IP_MAX=40
+      - MESSAGE_IP_WINDOW=1
+      - LIMIT_MESSAGE_USER=false
+      - MESSAGE_USER_MAX=40
+      - MESSAGE_USER_WINDOW=1
+      - CHECK_BALANCE=false
+      - ALLOW_EMAIL_LOGIN=true
+      - ALLOW_REGISTRATION=true
+      - ALLOW_SOCIAL_LOGIN=true
+      - ALLOW_SOCIAL_REGISTRATION=true
+      - SESSION_EXPIRY=900000
+      - REFRESH_TOKEN_EXPIRY=604800000
+      - JWT_SECRET=175be1f5c1d1a86a1f14f074e49855195741fbd6aee5d140c3f71f8036067a71
+      - JWT_REFRESH_SECRET=63bbbf308c03e40fa114ea9beccb4d94a966f1bd41de63775e29deb4e6557d2e
+      - RAG_API_URL=http://rag_api:8008
+      - DB_HOST=vectordb
+      - DB_PORT=5432
+      - EMBEDDINGS_PROVIDER=huggingface
+      - HF_TOKEN=
+    volumes:
+      - librechat_images:/app/client/public/images
+      - librechat_uploads_temp:/app/uploads/temp
+      - librechat_api_logs:/app/api/logs
+      - librechat_app_data:/app/app/data
+    networks:
+      - librechat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - librechat-network
+
+  # Meilisearch
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    environment:
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_HOST=http://meilisearch:7700
+      - MEILI_MASTER_KEY=DrhYf7zENyR6AlUCKmnz0eYASOQdl6zxH7s7MKFSfFCt
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - librechat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Vectordb
+  vectordb:
+    image: ankane/pgvector:latest
+    environment:
+      POSTGRES_DB: librechat
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - librechat-network
+
+  # RAG API
+  rag_api:
+    image: ghcr.io/danny-avila/librechat-rag-api-dev:latest
+    environment:
+      - DB_HOST=vectordb
+      - DB_PORT=5432
+      - POSTGRES_DB=librechat
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - RAG_API_URL=http://rag_api:8008
+      - EMBEDDINGS_PROVIDER=huggingface
+      - HF_TOKEN=
+    depends_on:
+      - vectordb
+    networks:
+      - librechat-network
+
+volumes:
+  librechat_images:
+  librechat_uploads_temp:
+  librechat_api_logs:
+  librechat_app_data:
+  mongo_data:
+  meili_data:
+  pgdata:
+
+networks:
+  librechat-network:
+    driver: bridge
